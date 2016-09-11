@@ -1,0 +1,101 @@
+vlmcsd is a portable KMS server that provides activation for Microsoft
+products. It runs on Linux, Android, Mac OS X, iOS and Windows (with cygwin
+installed).
+
+vlmcsd accepts the following parameters (all are optional)
+
+-4, -6
+
+If you specify neither -4 nor -6, vlmcsd tries to use IPv4 and IPv6. You will
+get an error message only if both protocols fail. If you specify either -4 or
+-6 only, vlmcsd will use IPv4 resp. IPv6 only. If you specify both -4 and -6,
+vlmcsd uses both protocols and quits with an error message if at least one
+protocol cannot be used.
+
+
+-l <file>
+
+Use <file> as a log file. The log file records all activations with
+IP address, Windows workstation name (no reverse DNS lookup),
+activated product, KMS protocol, time and date. If you do not
+specify a log file, no log is created. For a live view of the log file
+type tail -f <file>
+
+
+-P <port>
+
+Use TCP port <port> instead of the standard port 1688.
+
+
+-f
+
+Normally vlmcsd deamonizes and runs in background. If -f is specified, vlmcsd
+does not daemonize and writes all logging output to stdout (normally your
+terminal screen). -l is ignored when you use -f. This is mainly for testing
+purposes and running vlmcsd under the control of an advanced init system
+(e.g. launchd on Mac OS X, upstart on Ubuntu or systemd on Fedora).
+
+
+-p <file>
+
+Create pid file <file>. This has nothing to do with KMS ePIDs. A pid file is
+a file where vlmcsd writes its own process id. This is used by standard
+init scripts (typically found in /etc/init.d). The default is not to write a
+pid file. If you don't know what a pid file is, you don't need one, trust me.
+
+
+-i <file>
+
+Reads a file that contains ePIDs to use for Windows, Office 2010 and
+Office 2013. The file consists of lines in the form <AppId GUID> = <ePID>.
+KMS currently only knows 3 AppId GUIDs.
+
+55c92734-d682-4d71-983e-d6ec3f16059f (Windows)
+59a52881-a989-479d-af46-f275c6370663 (Office 2010 including Visio and Project)
+0ff1ce15-a989-479d-af46-f275c6370663 (Office 2013 including Visio and Project)
+
+A valid file could look like this
+
+55c92734-d682-4d71-983e-d6ec3f16059f = 55041-00206-184-207146-03-1062-6002.0000-3322013
+59a52881-a989-479d-af46-f275c6370663 = 55041-00096-216-598637-03-17418-6002.0000-3312013
+0ff1ce15-a989-479d-af46-f275c6370663 = 55041-00206-234-742099-03-9217-6002.0000-2942013
+
+The ePID is currently a comment only. You can specify any string up to 63
+characters. On Windows 7 Microsoft has blacklisted few ( < 10 ) ePIDs that
+were used in KMSv5 versions of the "ratiborus virtual machine". Microsoft
+has given up on blacklisting when KMS emulators appeared in the wild.
+
+Even if you can use "Activated by cool hacker guys" as an ePID, you
+may wish to use ePIDs that cannot be detected as non-MS ePIDs. If you
+don't know how these "valid" ePIDs look like exactly, do not use
+the -i option. vlmcsd provides internal mechanisms to generate valid
+ePIDs.
+
+
+-r <randomization level>
+
+This option determines how ePIDs are generated when
+
+- you haven't used -i or
+- the file specified by -i cannot be opened or
+- the file specified by -i does not contain the AppID GUID for the KMS request
+
+-r 0 means there are no random ePIDs. vlmcsd simply issues default ePIDs
+that are built into the binary. PRO: behaves like real KMS server that also
+always issues the same ePID. CON: MS may start blacklisting again and
+the default ePID may not work any longer.
+
+-r 1 instructs vlmcsd to generate random ePIDs when the program starts
+and uses these ePIDs until it is stopped. Most other KMS emulators generate
+a new ePID on every KMS request. This is easily detectable. MS could just
+modify sppsvc.exe in a way that it always sends two identical KMS requests
+in two RPC requests but over the same TCP connection. If both KMS responses
+contain the different ePIDs, the KMS server is not genuine. -r 1 is the default
+mode and recommended if you do not use a well designed ini file with the
+-i option. -r 1 also ensures that all three ePIDs (Windows, Office 2010 and
+Office 2013) use the same OS build number and LCID (language id).
+
+-r 2 behaves like most other KMS servers with random support and generates
+a new random ePID on every request. Use this mode with "care". However
+since MS currently does not seem to do any verification of the ePID, you
+currently don't need to pay attention to ePIDs at all.
